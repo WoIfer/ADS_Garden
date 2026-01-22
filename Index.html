@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADS Logic Playground</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="sidebar">
+    <h3 style="text-align:center">ADS LOGIC</h3>
+    
+    <div class="ctrl-group">
+        <label>Visual Style</label>
+        <select id="theme-sel" onchange="updateTheme()">
+            <option value="#00ff00|#ff00ff">Matrix (Green/Pink)</option>
+            <option value="#00ffff|#ffff00">Cyber (Cyan/Yellow)</option>
+            <option value="#ffb000|#00ffff">Amber (CRT/Cyan)</option>
+            <option value="#ff0000|#ffffff">Alert (Red/White)</option>
+        </select>
+    </div>
+
+    <div class="node-tool" draggable="true" ondragstart="startDrag(event, 'INPUT')">INPUT SOURCE</div>
+    <div class="node-tool" draggable="true" ondragstart="startDrag(event, 'THRESHOLD')">THRESHOLD GATE</div>
+    <div class="node-tool" draggable="true" ondragstart="startDrag(event, 'COMPETITIVE')">COMP REF</div>
+    <div class="node-tool" draggable="true" ondragstart="startDrag(event, 'OUTPUT')">OUTPUT SINK</div>
+    <hr style="border:0.5px solid #004400; width:100%">
+    <button onclick="saveNetwork()">MANUAL SAVE</button>
+    <button onclick="loadNetwork()">RELOAD LAST</button>
+    <button onclick="simulate()">RUN SIMULATION</button>
+    <button onclick="resetData()">RESET DATA</button>
+    <button onclick="wipeAll()" style="border-color:#ff0000; color:#ff0000">WIPE WORKSPACE</button>
+    
+    <div class="disclaimer">
+        <b>System Status:</b><br>
+        UI & Code: O<small>w</small>O Vibe Coded<br>
+        Logic Engine: Fact Check Enabled
+    </div>
+</div>
+
+<div id="workspace" ondrop="dropNode(event)" ondragover="event.preventDefault()">
+    <canvas id="gridCanvas"></canvas>
+    
+    <div id="inspector" onclick="event.stopPropagation()">
+        <h4 id="ins-type" style="margin-top:0">NODE CONFIG</h4>
+        
+        <div class="ctrl-group">
+            <label>Logic Strictness</label>
+            <select id="ins-strict" onchange="updateIns()">
+                <option value="0">Strict (Precise)</option>
+                <option value="0.5">Lax (±0.5)</option>
+                <option value="1.5">Permissive (±1.5)</option>
+            </select>
+        </div>
+
+        <div id="input-ctrl" class="ctrl-group">
+            <label>Signal Strength:</label>
+            <input type="range" id="ins-val" min="0" max="10" step="0.1" oninput="updateIns()">
+            <span id="ins-val-txt">0</span>
+        </div>
+        <div id="threshold-ctrl" class="ctrl-group">
+            <label>Logic Operator:</label>
+            <select id="ins-logic" onchange="updateIns()">
+                <option value="GT">Greater Than (> T)</option>
+                <option value="LT">Less Than (< T)</option>
+                <option value="EQ">Near Equal (≈ T)</option>
+            </select>
+            <label style="margin-top:10px; display:block">Threshold (T):</label>
+            <input type="range" id="ins-thresh" min="0" max="10" step="0.1" oninput="updateIns()">
+            <span id="ins-thresh-txt">0</span>
+        </div>
+        <div id="comp-ctrl" class="ctrl-group">
+            <label>Mode:</label>
+            <select id="ins-op" onchange="updateIns()">
+                <option value="MAX">MAX</option>
+                <option value="MIN">MIN</option>
+                <option value="AVG">AVG</option>
+            </select>
+        </div>
+        <button id="spec-btn" onclick="openSpectrum()" style="background:#004400">LOCK SPACE OVERLAY</button>
+        <button onclick="closeInspector()" style="color:#aaa; border-color:#444">HIDE CONFIG</button>
+    </div>
+</div>
+
+<div id="spectrum-overlay" onclick="event.stopPropagation()">
+    <div id="dim-header" class="dim-header">SPACE OVERLAY: IDLE</div>
+    <div class="viz-container">
+        <canvas id="viz-canvas"></canvas>
+    </div>
+    <div id="overlay-footer">
+        <button class="close-spec-btn" onclick="closeSpectrum()">CLOSE SPACE</button>
+    </div>
+</div>
+
+<script src="logic.js"></script>
+</body>
+</html>
