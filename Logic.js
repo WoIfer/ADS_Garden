@@ -189,7 +189,7 @@ function simulate() {
     render();
 }
 
-function saveNetwork() { localStorage.setItem('ads_logic_save', JSON.stringify({nodes, paths})); alert('Memory Locked.'); }
+function saveNetwork() { localStorage.setItem('ads_logic_save', JSON.stringify({nodes, paths})); }
 function loadNetwork() {
     const data = JSON.parse(localStorage.getItem('ads_logic_save'));
     if (data) { nodes = data.nodes; paths = data.paths; simulate(); }
