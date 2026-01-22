@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ADS Logic Playground</title>
-    <link rel="stylesheet" href="style.css">
+    <title>ADS Garden</title>
+    <link rel="stylesheet" href="/Style.css">
 </head>
 <body>
 
 <div id="sidebar">
-    <h3 style="text-align:center">ADS LOGIC</h3>
+    <h3 style="text-align:center">ADS Garden</h3>
     
     <div class="ctrl-group">
         <label>Visual Style</label>
@@ -21,21 +21,20 @@
         </select>
     </div>
 
-    <div class="node-tool" draggable="true" ondragstart="startDrag(event, 'INPUT')">INPUT SOURCE</div>
-    <div class="node-tool" draggable="true" ondragstart="startDrag(event, 'THRESHOLD')">THRESHOLD GATE</div>
-    <div class="node-tool" draggable="true" ondragstart="startDrag(event, 'COMPETITIVE')">COMP REF</div>
-    <div class="node-tool" draggable="true" ondragstart="startDrag(event, 'OUTPUT')">OUTPUT SINK</div>
+    <div class="node-tool" draggable="true" ondragstart="startDrag(event, 'INPUT')">INPUT NODE</div>
+    <div class="node-tool" draggable="true" ondragstart="startDrag(event, 'THRESHOLD')">THRESHOLD NODE</div>
+    <div class="node-tool" draggable="true" ondragstart="startDrag(event, 'COMPETITIVE')">COMP NODE</div>
+    <div class="node-tool" draggable="true" ondragstart="startDrag(event, 'OUTPUT')">OUTPUT NODE</div>
     <hr style="border:0.5px solid #004400; width:100%">
     <button onclick="saveNetwork()">MANUAL SAVE</button>
     <button onclick="loadNetwork()">RELOAD LAST</button>
-    <button onclick="simulate()">RUN SIMULATION</button>
     <button onclick="resetData()">RESET DATA</button>
     <button onclick="wipeAll()" style="border-color:#ff0000; color:#ff0000">WIPE WORKSPACE</button>
     
     <div class="disclaimer">
         <b>System Status:</b><br>
-        UI & Code: O<small>w</small>O Vibe Coded<br>
-        Logic Engine: Fact Check Enabled
+         O<small>w</small>O Vibe Coded<br>
+        have fun XD
     </div>
 </div>
 
@@ -93,6 +92,6 @@
     </div>
 </div>
 
-<script src="logic.js"></script>
+<script src="/Logic.js"></script>
 </body>
 </html>
