@@ -233,20 +233,33 @@ function loadNetwork() {
     }
 }
 function downloadBlueprint() {
+    // 1. Prepare the data
     const blueprint = {
-        version: "1.0",
-        timestamp: new Date().toISOString(),
         nodes: nodes,
-        paths: paths
+        paths: paths,
+        exportedAt: new Date().toLocaleString()
     };
 
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(blueprint));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "logic_system.json");
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+    // 2. Convert to JSON and then to a BLOB
+    const json = JSON.stringify(blueprint, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    
+    // 3. Create a temporary object URL
+    const url = window.URL.createObjectURL(blob);
+    
+    // 4. Create the hidden anchor and trigger it
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = "ads_logic_blueprint.json";
+    
+    document.body.appendChild(link);
+    link.click();
+    
+    // 5. CLEANUP: This is vital to prevent memory leaks
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+    console.log("Blueprint Streamed to Disk.");
 }
 function uploadBlueprint(event) {
     const file = event.target.files[0];
