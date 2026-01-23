@@ -154,18 +154,34 @@ function updateSpectrum() {
     const pad = 40; const w = vCanvas.width - pad * 2; const h = vCanvas.height - pad * 2;
     vCtx.strokeStyle = '#222'; vCtx.strokeRect(pad, pad, w, h);
     
-    if (lockedSpaceNode.type === 'THRESHOLD') {
-        vCtx.strokeStyle = mainCol; vCtx.setLineDash([5, 5]);
-        let tx = pad + (lockedSpaceNode.thresh / 10) * w;
-        vCtx.beginPath(); vCtx.moveTo(tx, pad); vCtx.lineTo(tx, pad + h); vCtx.stroke();
-        
-        vCtx.globalAlpha = 0.1; vCtx.fillStyle = mainCol;
-        let tolW = (lockedSpaceNode.strict / 10) * w;
-        vCtx.fillRect(tx - tolW, pad, tolW * 2, h);
-        vCtx.globalAlpha = 1.0; vCtx.setLineDash([]);
-    }
+if (lockedSpaceNode.type === 'THRESHOLD') {
+    vCtx.strokeStyle = mainCol; vCtx.setLineDash([5, 5]);
+    let tx = pad + (lockedSpaceNode.thresh / 10) * w;
+    vCtx.beginPath(); vCtx.moveTo(tx, pad); vCtx.lineTo(tx, pad + h); vCtx.stroke();
     
-    vCtx.fillStyle = '#444';
+    let rawTolW = (lockedSpaceNode.strict / 10) * w;
+    let bandStart = Math.max(pad, tx - rawTolW);
+    let bandEnd = Math.min(pad + w, tx + rawTolW);
+    
+    vCtx.globalAlpha = 0.1; vCtx.fillStyle = mainCol;
+    vCtx.fillRect(bandStart, pad, bandEnd - bandStart, h);
+    vCtx.globalAlpha = 1.0; vCtx.setLineDash([]);
+    
+    // Add highlighting for the passing side based on logic, clipped to edges
+    vCtx.globalAlpha = 0.05; vCtx.fillStyle = mainCol;
+    if (lockedSpaceNode.logic === 'GT') {
+        // Pass if sig > thresh - tol: highlight from thresh - tol to the right, clipped
+        let passStart = Math.max(pad, tx - rawTolW);
+        vCtx.fillRect(passStart, pad, (pad + w) - passStart, h);
+    } else if (lockedSpaceNode.logic === 'LT') {
+        // Pass if sig < thresh + tol: highlight from left to thresh + tol, clipped
+        let passEnd = Math.min(pad + w, tx + rawTolW);
+        vCtx.fillRect(pad, pad, passEnd - pad, h);
+    } // For 'EQ', the tolerance band already covers the passing region
+    vCtx.globalAlpha = 1.0;
+}
+    
+    vCtx.fillStyle = '#444';// hi again inline completion :) nice i like it r: Hello again! Thank you! Here's the continuation of the code:
     incoming.forEach((val, i) => {
         let x = pad + (val / 10) * w;
         let y = pad + h/2 + (i % 2 === 0 ? -20 : 20);
