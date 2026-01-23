@@ -9,7 +9,7 @@
 <body>
 
 <div id="sidebar">
-    <h3 style="text-align:center">ADS Garden</h3>
+    <h3 style="text-align:center;">ADS <a style="color:var(--accent-color);">Garden</a></h3>
     
     <div class="ctrl-group">
         <label>Visual Style</label>
@@ -25,14 +25,14 @@
     <div class="node-tool" draggable="true" ondragstart="startDrag(event, 'THRESHOLD')">THRESHOLD NODE</div>
     <div class="node-tool" draggable="true" ondragstart="startDrag(event, 'COMPETITIVE')">COMP NODE</div>
     <div class="node-tool" draggable="true" ondragstart="startDrag(event, 'OUTPUT')">OUTPUT NODE</div>
-    <hr style="border:0.5px solid #004400; width:100%">
+    <hr style="border:0.5px solid var(--main-color); width:100%">
     <button onclick="saveNetwork()">MANUAL SAVE</button>
     <button onclick="loadNetwork()">RELOAD LAST</button>
     <button onclick="downloadBlueprint()">DOWNLOAD BLUEPRINT</button>
     <input type="file" id="fileInput" style="display:none" onchange="uploadBlueprint(event)">
     <button onclick="document.getElementById('fileInput').click()">UPLOAD BLUEPRINT</button>
     <button onclick="resetData()">RESET DATA</button>
-    <button onclick="wipeAll()" style="border-color:#ff0000; color:#ff0000">WIPE WORKSPACE</button>
+    <button onclick="wipeAll()" id="wipebutton">WIPE WORKSPACE</button>
     
     <div class="disclaimer">
         <b>System Status:</b><br>
@@ -81,8 +81,16 @@
                 <option value="SUM">SUM</option>
             </select>
         </div>
-        <button id="spec-btn" onclick="openSpectrum()" style="background:#004400">DATA SAMPLE SPACE</button>
-        <button onclick="closeInspector()" style="color:#aaa; border-color:#444">HIDE CONFIG</button>
+        <div class="ctrl-group">
+            <label>Score:</label>
+            <input type="number" id="ins-score" min="0" max="100" step="0.1" oninput="updateIns()">
+        </div>
+        <div class="ctrl-group">
+            <label>Background Color:</label>
+            <input type="color" id="ins-bgcolor" oninput="updateIns()">
+        </div>
+        <button id="spec-btn" onclick="openSpectrum()" style="background:var(--bg-color);color: var(--main-color);">DATA SAMPLE SPACE</button>
+        <button onclick="closeInspector()" style="color:var(--accent-color); border-color:var(--accent-color)">HIDE CONFIG</button>
     </div>
 </div>
 
@@ -96,7 +104,7 @@
     </div>
 </div>
 
-<div id="tooltip" style="position:absolute; background:#000; color:#0f0; padding:5px; border:1px solid #0f0; display:none; pointer-events:none; z-index:400;"></div>
+<div id="tooltip" style="position:absolute; background:var(--bg-color); color:var(--accent-color); padding:5px; border:1px solid var(--main-color); display:none; pointer-events:none; z-index:400;"></div>
 
 <script src="Logic.js"></script>
 </body>

@@ -6,6 +6,9 @@ let paths = [];
 let connectionSource = null;
 let activeNode = null;
 let lockedSpaceNode = null;
+let selectedNodes = [];
+let selecting = false;
+let selStartX, selStartY, selEndX, selEndY;
 
 // BOOTSTRAP: Load memory when the window opens
 window.onload = () => {
@@ -40,7 +43,7 @@ function dropNode(ev) {
         type: ev.dataTransfer.getData("type"), 
         val: 0, // OFF by default
         thresh: 5.0, logic: 'NOT', op: 'SUM', 
-        strict: 0 
+        strict: 0, score: 0, bgColor: '#000'
     });
     render();
 }
@@ -53,6 +56,7 @@ canvas.addEventListener('mousedown', (e) => {
             const deletedId = clickedNode.id;
             paths = paths.filter(p => p.fromId !== deletedId && p.toId !== deletedId);
             nodes = nodes.filter(n => n.id !== deletedId);
+            selectedNodes = selectedNodes.filter(n => n.id !== deletedId);
             if (activeNode?.id === deletedId) closeInspector();
             if (lockedSpaceNode?.id === deletedId) closeSpectrum();
         } else {
@@ -67,22 +71,55 @@ canvas.addEventListener('mousedown', (e) => {
     }
 
     if (clickedNode) {
-        showInspector(clickedNode);
-        if(e.shiftKey){
-        if (!connectionSource) connectionSource = clickedNode;
-        else {
-            if (connectionSource.id !== clickedNode.id) {
-                paths.push({ fromId: connectionSource.id, toId: clickedNode.id });
-                simulate();
+        if (e.ctrlKey) {
+            if (selectedNodes.includes(clickedNode)) {
+                selectedNodes = selectedNodes.filter(n => n !== clickedNode);
+            } else {
+                selectedNodes.push(clickedNode);
             }
-            connectionSource = null;
+        } else {
+            selectedNodes = [clickedNode];
         }
+        activeNode = clickedNode;
+        showInspector();
+        if(e.shiftKey){
+            if (!connectionSource) connectionSource = clickedNode;
+            else {
+                if (connectionSource.id !== clickedNode.id) {
+                    paths.push({ fromId: connectionSource.id, toId: clickedNode.id });
+                    simulate();
+                }
+                connectionSource = null;
+            }
         }
     } else {
         closeInspector();
         connectionSource = null;
+        selecting = true;
+        selStartX = mx;
+        selStartY = my;
+        selEndX = mx;
+        selEndY = my;
     }
     render();
+});
+
+canvas.addEventListener('mouseup', (e) => {
+    if (selecting) {
+        selecting = false;
+        const minX = Math.min(selStartX, selEndX);
+        const maxX = Math.max(selStartX, selEndX);
+        const minY = Math.min(selStartY, selEndY);
+        const maxY = Math.max(selStartY, selEndY);
+        selectedNodes = nodes.filter(n => n.x >= minX - 20 && n.x <= maxX + 20 && n.y >= minY - 20 && n.y <= maxY + 20);
+        if (selectedNodes.length > 0) {
+            activeNode = selectedNodes[0];
+            showInspector();
+        } else {
+            closeInspector();
+        }
+        render();
+    }
 });
 
 function distToSegment(p, v, w) {
@@ -179,6 +216,12 @@ function handleSpectrumMouseLeave() {
 canvas.addEventListener('mousemove', (e) => {
     clearTimeout(tooltipTimeout);
     const mx = e.offsetX, my = e.offsetY;
+    if (selecting) {
+        selEndX = mx;
+        selEndY = my;
+        render();
+        return;
+    }
     let tooltip = '';
     const hoveredNode = nodes.find(n => Math.hypot(n.x - mx, n.y - my) < 20);
     if (hoveredNode) {
@@ -221,33 +264,37 @@ canvas.addEventListener('mouseleave', () => {
     document.getElementById('tooltip').style.display = 'none';
 });
 
-function showInspector(node) {
-    activeNode = node;
+function showInspector() {
+    if (!activeNode) return;
     document.getElementById('inspector').style.display = 'block';
-    document.getElementById('ins-type').innerText = `${node.type} CONFIG`;
-    document.getElementById('input-ctrl').style.display = node.type === 'INPUT' ? 'block' : 'none';
-    document.getElementById('threshold-ctrl').style.display = node.type === 'THRESHOLD' ? 'block' : 'none';
-    document.getElementById('comp-ctrl').style.display = node.type === 'COMPETITIVE' ? 'block' : 'none';
-    document.getElementById('ins-val').value = node.val === -0.1 ? 0 : node.val;
-    document.getElementById('ins-thresh').value = node.thresh;
-    document.getElementById('ins-logic').value = node.logic;
-    document.getElementById('ins-op').value = node.op;
-    document.getElementById('ins-strict').value = node.strict || 0;
+    document.getElementById('ins-type').innerText = `${activeNode.type} CONFIG`;
+    document.getElementById('input-ctrl').style.display = activeNode.type === 'INPUT' ? 'block' : 'none';
+    document.getElementById('threshold-ctrl').style.display = activeNode.type === 'THRESHOLD' ? 'block' : 'none';
+    document.getElementById('comp-ctrl').style.display = activeNode.type === 'COMPETITIVE' ? 'block' : 'none';
+    document.getElementById('ins-val').value = activeNode.val;
+    document.getElementById('ins-thresh').value = activeNode.thresh;
+    document.getElementById('ins-logic').value = activeNode.logic;
+    document.getElementById('ins-op').value = activeNode.op;
+    document.getElementById('ins-strict').value = activeNode.strict || 0;
+    document.getElementById('ins-score').value = activeNode.score;
+    document.getElementById('ins-bgcolor').value = activeNode.bgColor;
     updateInsValuesOnly();
 }
 
 function updateIns() {
     if (!activeNode) return;
-    if (activeNode.type === 'INPUT') {
-        let rawVal = parseFloat(document.getElementById('ins-val').value);
-        // Stress test: If user sets input to 0, it is 0. If they want OFF, they'd need a toggle.
-        // For now, let's assume anything >= 0 is ON.
-        activeNode.val = rawVal; 
-    }
-    activeNode.thresh = parseFloat(document.getElementById('ins-thresh').value);
-    activeNode.logic = document.getElementById('ins-logic').value;
-    activeNode.op = document.getElementById('ins-op').value;
-    activeNode.strict = parseFloat(document.getElementById('ins-strict').value);
+    const targets = selectedNodes.length > 0 ? selectedNodes : [activeNode];
+    targets.forEach(n => {
+        if (n.type === 'INPUT') {
+            n.val = parseFloat(document.getElementById('ins-val').value);
+        }
+        n.thresh = parseFloat(document.getElementById('ins-thresh').value);
+        n.logic = document.getElementById('ins-logic').value;
+        n.op = document.getElementById('ins-op').value;
+        n.strict = parseFloat(document.getElementById('ins-strict').value);
+        n.score = parseFloat(document.getElementById('ins-score').value);
+        n.bgColor = document.getElementById('ins-bgcolor').value;
+    });
     updateInsValuesOnly();
     simulate();
 }
@@ -275,7 +322,7 @@ function closeSpectrum() {
     vCanvas.removeEventListener('mousemove', handleSpectrumMouseMove);
     vCanvas.removeEventListener('mouseleave', handleSpectrumMouseLeave);
 }
-function closeInspector() { activeNode = null; document.getElementById('inspector').style.display = 'none'; render(); }
+function closeInspector() { activeNode = null; selectedNodes = []; document.getElementById('inspector').style.display = 'none'; render(); }
 
 function updateSpectrum() {
     if (!lockedSpaceNode) return;
@@ -397,6 +444,10 @@ function loadNetwork() {
     if (raw) { 
         const data = JSON.parse(raw);
         nodes = data.nodes || []; 
+        nodes.forEach(n => {
+            if (n.score === undefined) n.score = 0;
+            if (n.bgColor === undefined) n.bgColor = '#000';
+        });
         paths = data.paths || []; 
         simulate(); 
     }
@@ -481,8 +532,13 @@ function render() {
                     ctx.beginPath();
                     ctx.arc(nf.x, nf.y - (15 + index * 5), 15 + index * 5, 0, Math.PI);
                     ctx.strokeStyle = nf.val > 0 ? mainCol : '#222';
+                    if (nf.val > 0) {
+                        ctx.shadowBlur = 15;
+                        ctx.shadowColor = mainCol;
+                    }
                     ctx.lineWidth = 2;
                     ctx.stroke();
+                    ctx.shadowBlur = 0;
                 } else {
                     // Connection: draw line with offset for multiples
                     let dx = nt.x - nf.x;
@@ -498,21 +554,34 @@ function render() {
                         ctx.moveTo(nf.x + px, nf.y + py);
                         ctx.lineTo(nt.x + px, nt.y + py);
                         ctx.strokeStyle = nf.val > 0 ? mainCol : '#222';
+                        if (nf.val > 0) {
+                            ctx.shadowBlur = 15;
+                            ctx.shadowColor = mainCol;
+                        }
                         ctx.lineWidth = 2;
                         ctx.stroke();
+                        ctx.shadowBlur = 0;
                     }
                 }
             }
         });
     });
     
+    if (selecting) {
+        ctx.strokeStyle = '#fff';
+        ctx.setLineDash([5,5]);
+        ctx.strokeRect(selStartX, selStartY, selEndX - selStartX, selEndY - selStartY);
+        ctx.setLineDash([]);
+    }
+    
     nodes.forEach(n => {
-        ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(n.x, n.y, 18, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = n.bgColor; ctx.beginPath(); ctx.arc(n.x, n.y, 18, 0, Math.PI*2); ctx.fill();
         const isActive = n.val > 0;
-        ctx.strokeStyle = (activeNode?.id === n.id) ? '#fff' : (lockedSpaceNode?.id === n.id ? 'var(--accent-color)' : (isActive ? mainCol : '#444'));
-        ctx.lineWidth = (activeNode?.id === n.id || lockedSpaceNode?.id === n.id) ? 3 : 2; ctx.stroke();
+        ctx.strokeStyle = selectedNodes.includes(n) ? '#0ff' : (activeNode?.id === n.id) ? '#fff' : (lockedSpaceNode?.id === n.id ? 'var(--accent-color)' : (isActive ? mainCol : '#444'));
+        ctx.lineWidth = (activeNode?.id === n.id || lockedSpaceNode?.id === n.id || selectedNodes.includes(n)) ? 3 : 2; ctx.stroke();
         ctx.fillStyle = mainCol; ctx.font = '8px monospace'; ctx.textAlign = 'center';
         ctx.fillText(n.type, n.x, n.y - 5);
+        ctx.fillText(n.score.toFixed(1), n.x, n.y - 25);
         ctx.font = 'bold 10px monospace'; 
         if (n.type === 'OUTPUT') {
             ctx.fillText(n.val.toFixed(1), n.x, n.y + 10);
