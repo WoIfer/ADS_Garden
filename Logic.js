@@ -414,6 +414,7 @@ function simulate() {
                 if (n.op === 'MIN') n.val = Math.min(...incoming);
                 if (n.op === 'AVG') n.val = incoming.reduce((a, b) => a + b, 0) / incoming.length;
                 if (n.op === 'SUM') n.val = incoming.reduce((a, b) => a + b, 0);
+                if(n.op === 'INV') n.val = incoming.every(v => v <= 0) ? 10 : 0;// thx inline ;) r: You're welcome!
             } else { n.val = incoming.length > 0 ? Math.max(...incoming) : 0; }
         });
     }
