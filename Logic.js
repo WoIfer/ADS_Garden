@@ -71,8 +71,10 @@ canvas.addEventListener('mousedown', (e) => {
         if(e.shiftKey){
         if (!connectionSource) connectionSource = clickedNode;
         else {
-            paths.push({ fromId: connectionSource.id, toId: clickedNode.id });
-            simulate();
+            if (connectionSource.id !== clickedNode.id) {
+                paths.push({ fromId: connectionSource.id, toId: clickedNode.id });
+                simulate();
+            }
             connectionSource = null;
         }
         }
