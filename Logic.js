@@ -38,7 +38,7 @@ function dropNode(ev) {
         nodes.push({
         id: Date.now(), x, y, 
         type: ev.dataTransfer.getData("type"), 
-        val: -0.1, // OFF by default
+        val: 0, // OFF by default
         thresh: 5.0, logic: 'NOT', op: 'SUM', 
         strict: 0 
     });
@@ -104,7 +104,7 @@ function handleSpectrumMouseMove(e) {
     const rect = vCanvas.getBoundingClientRect();
     const mx = e.clientX - rect.left, my = e.clientY - rect.top;
     let tooltip = '';
-    const incoming = paths.filter(p => p.toId === lockedSpaceNode.id).map(p => nodes.find(n => n.id === p.fromId)?.val ?? -0.1).filter(v => v > -0.1);
+    const incoming = paths.filter(p => p.toId === lockedSpaceNode.id).map(p => nodes.find(n => n.id === p.fromId)?.val ?? 0).filter(v => v >= 0);
     const pad = 40; const w = vCanvas.width - pad * 2; const h = vCanvas.height - pad * 2;
     
     // Check for threshold line
@@ -155,7 +155,7 @@ function handleSpectrumMouseMove(e) {
     // Check for output dot
     let outX = pad + (Math.max(0, lockedSpaceNode.val) / 10) * w;
     if (Math.hypot(mx - outX, my - (pad + h/2)) < 10) {
-        tooltip = `Output: ${lockedSpaceNode.val > -0.1 ? lockedSpaceNode.val.toFixed(1) : 'OFF'}`;
+        tooltip = `Output: ${lockedSpaceNode.type === 'OUTPUT' ? lockedSpaceNode.val.toFixed(1) : (lockedSpaceNode.val > 0 ? lockedSpaceNode.val.toFixed(1) : 'OFF')}`;
     }
     
     if (tooltip) {
@@ -187,7 +187,7 @@ canvas.addEventListener('mousemove', (e) => {
         else if (hoveredNode.type === 'THRESHOLD') desc = 'Compares input to threshold and outputs based on logic.';
         else if (hoveredNode.type === 'COMPETITIVE') desc = 'Combines multiple inputs using selected operation.';
         else if (hoveredNode.type === 'OUTPUT') desc = 'Displays the final signal.';
-        tooltip = `${hoveredNode.type}: ${hoveredNode.val > -0.1 ? hoveredNode.val.toFixed(1) : 'OFF'}\n${desc}`;
+        tooltip = `${hoveredNode.type}: ${hoveredNode.type === 'OUTPUT' ? hoveredNode.val.toFixed(1) : (hoveredNode.val > 0 ? hoveredNode.val.toFixed(1) : 'OFF')}\n${desc}`;
     } else {
         const hoveredPath = paths.find(p => {
             const nf = nodes.find(n => n.id === p.fromId);
@@ -200,7 +200,7 @@ canvas.addEventListener('mousemove', (e) => {
         if (hoveredPath) {
             const nf = nodes.find(n => n.id === hoveredPath.fromId);
             const nt = nodes.find(n => n.id === hoveredPath.toId);
-            tooltip = `Connection: ${nf?.type} -> ${nt?.type}\nSignal: ${nf?.val > -0.1 ? nf.val.toFixed(1) : 'OFF'}`;
+            tooltip = `Connection: ${nf?.type} -> ${nt?.type}\nSignal: ${nf?.val > 0 ? nf.val.toFixed(1) : 'OFF'}`;
         }
     }
     if (tooltip) {
@@ -253,7 +253,7 @@ function updateIns() {
 }
 
 function updateInsValuesOnly() {
-    document.getElementById('ins-val-txt').innerText = activeNode.val > -0.1 ? activeNode.val.toFixed(1) : "OFF";
+    document.getElementById('ins-val-txt').innerText = activeNode.type === 'OUTPUT' ? activeNode.val.toFixed(1) : (activeNode.val > 0 ? activeNode.val.toFixed(1) : "OFF");
     document.getElementById('ins-thresh-txt').innerText = activeNode.thresh.toFixed(1);
 }
 
@@ -283,7 +283,7 @@ function updateSpectrum() {
     const vCtx = vCanvas.getContext('2d');
     vCanvas.width = vCanvas.offsetWidth; vCanvas.height = vCanvas.offsetHeight;
     vCtx.clearRect(0, 0, vCanvas.width, vCanvas.height);
-    const incoming = paths.filter(p => p.toId === lockedSpaceNode.id).map(p => nodes.find(n => n.id === p.fromId)?.val ?? -0.1).filter(v => v > -0.1);
+    const incoming = paths.filter(p => p.toId === lockedSpaceNode.id).map(p => nodes.find(n => n.id === p.fromId)?.val ?? 0).filter(v => v >= 0);
     const mainCol = getComputedStyle(document.documentElement).getPropertyValue('--main-color');
     
     document.getElementById('dim-header').innerText = `LOCKED: ${lockedSpaceNode.type} (STRICTNESS: ${lockedSpaceNode.strict})`;
@@ -339,7 +339,7 @@ function updateSpectrum() {
         vCtx.beginPath(); vCtx.arc(x, y, 4, 0, Math.PI*2); vCtx.fill();
     });
     let outX = pad + (Math.max(0, lockedSpaceNode.val) / 10) * w;
-    vCtx.shadowBlur = 15; vCtx.shadowColor = mainCol; vCtx.fillStyle = (lockedSpaceNode.val > -0.1) ? mainCol : '#222';
+    vCtx.shadowBlur = 15; vCtx.shadowColor = mainCol; vCtx.fillStyle = (lockedSpaceNode.val > 0) ? mainCol : '#222';
     vCtx.beginPath(); vCtx.arc(outX, pad + h/2, 8, 0, Math.PI*2); vCtx.fill(); vCtx.shadowBlur = 0;
 }
 
@@ -347,27 +347,27 @@ function simulate() {
     for(let i = 0; i < 5; i++) {
         nodes.forEach(n => {
             if (n.type === 'INPUT') return;
-            // Only count signals > -0.1 as active inputs
+            // Only count signals >= 0 as active inputs
             const incoming = paths.filter(p => p.toId === n.id)
-                                  .map(p => nodes.find(node => node.id === p.fromId)?.val ?? -0.1)
-                                  .filter(v => v > -0.1);
+                                  .map(p => nodes.find(node => node.id === p.fromId)?.val ?? 0)
+                                  .filter(v => v >= 0);
 
-            if (incoming.length === 0) { n.val = -0.1; return; }
+            if (incoming.length === 0) { n.val = 0; return; }
             
             const tol = n.strict || 0;
             if (n.type === 'THRESHOLD') {
-                const sig = incoming.length > 0 ? incoming[0] : -0.1;
+                const sig = incoming.length > 0 ? incoming[0] : 0;
                 let pass = false;
                 if (n.logic === 'GT') pass = sig > (n.thresh - tol);
                 if (n.logic === 'LT') pass = sig < (n.thresh + tol);
                 if (n.logic === 'EQ') pass = Math.abs(sig - n.thresh) <= tol;
-                n.val = pass ? sig : -0.1;
+                n.val = pass ? sig : 0;
             } else if (n.type === 'COMPETITIVE') {
                 if (n.op === 'MAX') n.val = Math.max(...incoming);
                 if (n.op === 'MIN') n.val = Math.min(...incoming);
                 if (n.op === 'AVG') n.val = incoming.reduce((a, b) => a + b, 0) / incoming.length;
                 if (n.op === 'SUM') n.val = incoming.reduce((a, b) => a + b, 0);
-            } else { n.val = incoming.length > 0 ? Math.max(...incoming) : -0.1; }
+            } else { n.val = incoming.length > 0 ? Math.max(...incoming) : 0; }
         });
     }
     updateSpectrum();
@@ -480,7 +480,7 @@ function render() {
                     // Self-loop: draw arc
                     ctx.beginPath();
                     ctx.arc(nf.x, nf.y - (15 + index * 5), 15 + index * 5, 0, Math.PI);
-                    ctx.strokeStyle = nf.val > -0.1 ? mainCol : '#222';
+                    ctx.strokeStyle = nf.val > 0 ? mainCol : '#222';
                     ctx.lineWidth = 2;
                     ctx.stroke();
                 } else {
@@ -497,7 +497,7 @@ function render() {
                         ctx.beginPath();
                         ctx.moveTo(nf.x + px, nf.y + py);
                         ctx.lineTo(nt.x + px, nt.y + py);
-                        ctx.strokeStyle = nf.val > -0.1 ? mainCol : '#222';
+                        ctx.strokeStyle = nf.val > 0 ? mainCol : '#222';
                         ctx.lineWidth = 2;
                         ctx.stroke();
                     }
@@ -508,13 +508,17 @@ function render() {
     
     nodes.forEach(n => {
         ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(n.x, n.y, 18, 0, Math.PI*2); ctx.fill();
-        const isActive = n.val > -0.1;
+        const isActive = n.val > 0;
         ctx.strokeStyle = (activeNode?.id === n.id) ? '#fff' : (lockedSpaceNode?.id === n.id ? 'var(--accent-color)' : (isActive ? mainCol : '#444'));
         ctx.lineWidth = (activeNode?.id === n.id || lockedSpaceNode?.id === n.id) ? 3 : 2; ctx.stroke();
         ctx.fillStyle = mainCol; ctx.font = '8px monospace'; ctx.textAlign = 'center';
         ctx.fillText(n.type, n.x, n.y - 5);
         ctx.font = 'bold 10px monospace'; 
-        ctx.fillText(isActive ? n.val.toFixed(1) : "OFF", n.x, n.y + 10);
+        if (n.type === 'OUTPUT') {
+            ctx.fillText(n.val.toFixed(1), n.x, n.y + 10);
+        } else {
+            ctx.fillText(isActive ? n.val.toFixed(1) : "OFF", n.x, n.y + 10);
+        }
     });
 }
 render();
