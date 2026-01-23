@@ -233,21 +233,19 @@ function loadNetwork() {
     }
 }
 function downloadBlueprint() {
-    // 1. Prepare the data
+
     const blueprint = {
         nodes: nodes,
         paths: paths,
         exportedAt: new Date().toLocaleString()
     };
 
-    // 2. Convert to JSON and then to a BLOB
     const json = JSON.stringify(blueprint, null, 2);
     const blob = new Blob([json], { type: "application/json" });
     
-    // 3. Create a temporary object URL
+
     const url = window.URL.createObjectURL(blob);
     
-    // 4. Create the hidden anchor and trigger it
     const link = document.createElement('a');
     link.href = url;
     link.download = "ads_logic_blueprint.json";
@@ -255,7 +253,6 @@ function downloadBlueprint() {
     document.body.appendChild(link);
     link.click();
     
-    // 5. CLEANUP: This is vital to prevent memory leaks
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
     
