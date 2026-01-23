@@ -232,6 +232,50 @@ function loadNetwork() {
         simulate(); 
     }
 }
+function downloadBlueprint() {
+    const blueprint = {
+        version: "1.0",
+        timestamp: new Date().toISOString(),
+        nodes: nodes,
+        paths: paths
+    };
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(blueprint));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "logic_system.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+}
+function uploadBlueprint(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const importedData = JSON.parse(e.target.result);
+            
+            // Stress Test: Validate that the file actually contains nodes and paths
+            if (!importedData.nodes || !importedData.paths) {
+                throw new Error("Invalid Blueprint format.");
+            }
+
+            nodes = importedData.nodes;
+            paths = importedData.paths;
+
+            // Re-sync the system
+            simulate();
+            render();
+            alert("System Reconstituted Successfully.");
+        } catch (err) {
+            alert("CRITICAL ERROR: Failed to parse logic file.");
+            console.error(err);
+        }
+    };
+    reader.readAsText(file);
+}
 
 function wipeAll() { nodes = []; paths = []; closeInspector(); closeSpectrum(); render(); }
 function resetData() { nodes.forEach(n => { if(n.type !== 'INPUT') n.val = -0.1; }); render(); }

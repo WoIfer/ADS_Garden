@@ -28,6 +28,9 @@
     <hr style="border:0.5px solid #004400; width:100%">
     <button onclick="saveNetwork()">MANUAL SAVE</button>
     <button onclick="loadNetwork()">RELOAD LAST</button>
+    <button onclick="downloadBlueprint()">DOWNLOAD BLUEPRINT</button>
+    <input type="file" id="fileInput" style="display:none" onchange="uploadBlueprint(event)">
+    <button onclick="document.getElementById('fileInput').click()">UPLOAD BLUEPRINT</button>
     <button onclick="resetData()">RESET DATA</button>
     <button onclick="wipeAll()" style="border-color:#ff0000; color:#ff0000">WIPE WORKSPACE</button>
     
