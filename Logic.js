@@ -7,6 +7,11 @@ let connectionSource = null;
 let activeNode = null;
 let lockedSpaceNode = null;
 
+// BOOTSTRAP: Load memory when the window opens
+window.onload = () => {
+    loadNetwork();
+};
+
 function updateTheme() {
     const [main, accent] = document.getElementById('theme-sel').value.split('|');
     document.documentElement.style.setProperty('--main-color', main);
@@ -32,7 +37,8 @@ function dropNode(ev) {
     nodes.push({ 
         id: Date.now(), x, y, 
         type: ev.dataTransfer.getData("type"), 
-        val: 0, thresh: 5.0, logic: 'GT', op: 'AVG', 
+        val: -0.1, // OFF by default
+        thresh: 5.0, logic: 'GT', op: 'AVG', 
         strict: 0 
     });
     render();
@@ -94,7 +100,7 @@ function showInspector(node) {
     document.getElementById('input-ctrl').style.display = node.type === 'INPUT' ? 'block' : 'none';
     document.getElementById('threshold-ctrl').style.display = node.type === 'THRESHOLD' ? 'block' : 'none';
     document.getElementById('comp-ctrl').style.display = node.type === 'COMPETITIVE' ? 'block' : 'none';
-    document.getElementById('ins-val').value = node.val;
+    document.getElementById('ins-val').value = node.val === -0.1 ? 0 : node.val;
     document.getElementById('ins-thresh').value = node.thresh;
     document.getElementById('ins-logic').value = node.logic;
     document.getElementById('ins-op').value = node.op;
@@ -104,7 +110,12 @@ function showInspector(node) {
 
 function updateIns() {
     if (!activeNode) return;
-    if (activeNode.type === 'INPUT') activeNode.val = parseFloat(document.getElementById('ins-val').value);
+    if (activeNode.type === 'INPUT') {
+        let rawVal = parseFloat(document.getElementById('ins-val').value);
+        // Stress test: If user sets input to 0, it is 0. If they want OFF, they'd need a toggle.
+        // For now, let's assume anything >= 0 is ON.
+        activeNode.val = rawVal; 
+    }
     activeNode.thresh = parseFloat(document.getElementById('ins-thresh').value);
     activeNode.logic = document.getElementById('ins-logic').value;
     activeNode.op = document.getElementById('ins-op').value;
@@ -114,7 +125,7 @@ function updateIns() {
 }
 
 function updateInsValuesOnly() {
-    document.getElementById('ins-val-txt').innerText = activeNode.val.toFixed(1);
+    document.getElementById('ins-val-txt').innerText = activeNode.val > -0.1 ? activeNode.val.toFixed(1) : "OFF";
     document.getElementById('ins-thresh-txt').innerText = activeNode.thresh.toFixed(1);
 }
 
@@ -134,7 +145,7 @@ function updateSpectrum() {
     const vCtx = vCanvas.getContext('2d');
     vCanvas.width = vCanvas.offsetWidth; vCanvas.height = vCanvas.offsetHeight;
     vCtx.clearRect(0, 0, vCanvas.width, vCanvas.height);
-    const incoming = paths.filter(p => p.toId === lockedSpaceNode.id).map(p => nodes.find(n => n.id === p.fromId)?.val || 0);
+    const incoming = paths.filter(p => p.toId === lockedSpaceNode.id).map(p => nodes.find(n => n.id === p.fromId)?.val ?? -0.1).filter(v => v > -0.1);
     const mainCol = getComputedStyle(document.documentElement).getPropertyValue('--main-color');
     
     document.getElementById('dim-header').innerText = `LOCKED: ${lockedSpaceNode.type} (STRICTNESS: ${lockedSpaceNode.strict})`;
@@ -158,8 +169,8 @@ function updateSpectrum() {
         let y = pad + h/2 + (i % 2 === 0 ? -20 : 20);
         vCtx.beginPath(); vCtx.arc(x, y, 4, 0, Math.PI*2); vCtx.fill();
     });
-    let outX = pad + (lockedSpaceNode.val / 10) * w;
-    vCtx.shadowBlur = 15; vCtx.shadowColor = mainCol; vCtx.fillStyle = mainCol;
+    let outX = pad + (Math.max(0, lockedSpaceNode.val) / 10) * w;
+    vCtx.shadowBlur = 15; vCtx.shadowColor = mainCol; vCtx.fillStyle = (lockedSpaceNode.val > -0.1) ? mainCol : '#222';
     vCtx.beginPath(); vCtx.arc(outX, pad + h/2, 8, 0, Math.PI*2); vCtx.fill(); vCtx.shadowBlur = 0;
 }
 
@@ -167,8 +178,12 @@ function simulate() {
     for(let i = 0; i < 5; i++) {
         nodes.forEach(n => {
             if (n.type === 'INPUT') return;
-            const incoming = paths.filter(p => p.toId === n.id).map(p => nodes.find(node => node.id === p.fromId)?.val || 0);
-            if (incoming.length === 0) { n.val = 0; return; }
+            // Only count signals > -0.1 as active inputs
+            const incoming = paths.filter(p => p.toId === n.id)
+                                  .map(p => nodes.find(node => node.id === p.fromId)?.val ?? -0.1)
+                                  .filter(v => v > -0.1);
+
+            if (incoming.length === 0) { n.val = -0.1; return; }
             
             const tol = n.strict || 0;
             if (n.type === 'THRESHOLD') {
@@ -177,25 +192,48 @@ function simulate() {
                 if (n.logic === 'GT') pass = sig > (n.thresh - tol);
                 if (n.logic === 'LT') pass = sig < (n.thresh + tol);
                 if (n.logic === 'EQ') pass = Math.abs(sig - n.thresh) <= tol;
-                n.val = pass ? sig : 0;
+                n.val = pass ? sig : -0.1;
             } else if (n.type === 'COMPETITIVE') {
                 if (n.op === 'MAX') n.val = Math.max(...incoming);
                 if (n.op === 'MIN') n.val = Math.min(...incoming);
                 if (n.op === 'AVG') n.val = incoming.reduce((a, b) => a + b, 0) / incoming.length;
-            } else { n.val = incoming.length > 0 ? Math.max(...incoming) : 0; }
+            } else { n.val = incoming.length > 0 ? Math.max(...incoming) : -0.1; }
         });
     }
     updateSpectrum();
     render();
 }
 
-function saveNetwork() { localStorage.setItem('ads_logic_save', JSON.stringify({nodes, paths})); }
-function loadNetwork() {
-    const data = JSON.parse(localStorage.getItem('ads_logic_save'));
-    if (data) { nodes = data.nodes; paths = data.paths; simulate(); }
+function saveNetwork() { 
+    try {
+        const snapshot = {
+            nodes: nodes.map(n => ({
+                id: n.id, x: n.x, y: n.y, type: n.type, 
+                val: n.val, thresh: n.thresh, logic: n.logic, 
+                op: n.op, strict: n.strict 
+            })),
+            paths: paths.map(p => ({ fromId: p.fromId, toId: p.toId }))
+        };
+        localStorage.setItem('ads_logic_save', JSON.stringify(snapshot)); 
+        alert("Memory Locked.");
+    } catch(e) {
+        console.error(e);
+        alert("Save failed. Check console.");
+    }
 }
+
+function loadNetwork() {
+    const raw = localStorage.getItem('ads_logic_save');
+    if (raw) { 
+        const data = JSON.parse(raw);
+        nodes = data.nodes || []; 
+        paths = data.paths || []; 
+        simulate(); 
+    }
+}
+
 function wipeAll() { nodes = []; paths = []; closeInspector(); closeSpectrum(); render(); }
-function resetData() { nodes.forEach(n => { if(n.type !== 'INPUT') n.val = 0; }); render(); }
+function resetData() { nodes.forEach(n => { if(n.type !== 'INPUT') n.val = -0.1; }); render(); }
 
 function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -205,18 +243,20 @@ function render() {
         const nt = nodes.find(n => n.id === p.toId);
         if (nf && nt) {
             ctx.beginPath(); ctx.moveTo(nf.x, nf.y); ctx.lineTo(nt.x, nt.y);
-            ctx.strokeStyle = nf.val > 0 ? mainCol : '#222';
+            // ACTIVE if value is 0 or higher
+            ctx.strokeStyle = nf.val > -0.1 ? mainCol : '#222';
             ctx.lineWidth = 2; ctx.stroke();
         }
     });
     nodes.forEach(n => {
         ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(n.x, n.y, 18, 0, Math.PI*2); ctx.fill();
-        ctx.strokeStyle = (activeNode?.id === n.id) ? '#fff' : (lockedSpaceNode?.id === n.id ? 'var(--accent-color)' : (n.val > 0 ? mainCol : '#444'));
+        const isActive = n.val > -0.1;
+        ctx.strokeStyle = (activeNode?.id === n.id) ? '#fff' : (lockedSpaceNode?.id === n.id ? 'var(--accent-color)' : (isActive ? mainCol : '#444'));
         ctx.lineWidth = (activeNode?.id === n.id || lockedSpaceNode?.id === n.id) ? 3 : 2; ctx.stroke();
         ctx.fillStyle = mainCol; ctx.font = '8px monospace'; ctx.textAlign = 'center';
         ctx.fillText(n.type, n.x, n.y - 5);
-        ctx.font = 'bold 10px monospace'; ctx.fillText(n.val.toFixed(1), n.x, n.y + 10);
+        ctx.font = 'bold 10px monospace'; 
+        ctx.fillText(isActive ? n.val.toFixed(1) : "OFF", n.x, n.y + 10);
     });
 }
-loadNetwork();
 render();
