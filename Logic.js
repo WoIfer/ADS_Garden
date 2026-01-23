@@ -377,8 +377,8 @@ function updateSpectrum() {
     vCtx.globalAlpha = 1.0;
 }
     
-    vCtx.fillStyle = '#444';// hi again inline completion :) nice i like it r: Hello again! Thank you! Here's the continuation of the code:
-    const dotColors = ['#444', '#666', '#888', '#aaa'];
+    vCtx.fillStyle = '#444';
+    const dotColors = ['#444', '#666', '#888', '#aaa'];//
     incoming.forEach((val, i) => {
         let x = pad + (val / 10) * w;
         let y = pad + h/2 + (i % 2 === 0 ? -20 : 20);
