@@ -414,7 +414,7 @@ function simulate() {
                 if (n.op === 'MIN') n.val = Math.min(...incoming);
                 if (n.op === 'AVG') n.val = incoming.reduce((a, b) => a + b, 0) / incoming.length;
                 if (n.op === 'SUM') n.val = incoming.reduce((a, b) => a + b, 0);
-                if(n.op === 'INV') n.val = incoming.every(v => v <= 0) ? 10 : 0;// thx inline ;) r: You're welcome!
+                if(n.op === 'INV') n.val = incoming.every(v => v <= 0) ? 10 : 0;// thx inline ;) .
             } else { n.val = incoming.length > 0 ? Math.max(...incoming) : 0; }
         });
     }
@@ -576,9 +576,10 @@ function render() {
     }
     
     nodes.forEach(n => {
+        const accentCol = getComputedStyle(document.documentElement).getPropertyValue('--accent-color');
         ctx.fillStyle = n.bgColor; ctx.beginPath(); ctx.arc(n.x, n.y, 18, 0, Math.PI*2); ctx.fill();
         const isActive = n.val > 0;
-        ctx.strokeStyle = selectedNodes.includes(n) ? '#0ff' : (activeNode?.id === n.id) ? '#fff' : (lockedSpaceNode?.id === n.id ? 'var(--accent-color)' : (isActive ? mainCol : '#444'));
+        ctx.strokeStyle = selectedNodes.includes(n) ? accentCol : (activeNode?.id === n.id) ? '#fff' : (lockedSpaceNode?.id === n.id ? accentCol : (isActive ? mainCol : '#444'));
         ctx.lineWidth = (activeNode?.id === n.id || lockedSpaceNode?.id === n.id || selectedNodes.includes(n)) ? 3 : 2; ctx.stroke();
         ctx.fillStyle = mainCol; ctx.font = '8px monospace'; ctx.textAlign = 'center';
         ctx.fillText(n.type, n.x, n.y - 5);
