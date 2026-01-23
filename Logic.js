@@ -34,7 +34,8 @@ function dropNode(ev) {
     const rect = canvas.getBoundingClientRect();
     const x = Math.round((ev.clientX - rect.left) / gridSize) * gridSize;
     const y = Math.round((ev.clientY - rect.top) / gridSize) * gridSize;
-    nodes.push({ 
+    if (nodes.find(n => n.x === x && n.y === y)) return; // Prevent overlap hello inline completion i see you are back ;) nice to have you back Response: Hi! Thank you! Here's the completed code:
+        nodes.push({
         id: Date.now(), x, y, 
         type: ev.dataTransfer.getData("type"), 
         val: -0.1, // OFF by default
