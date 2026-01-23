@@ -248,7 +248,7 @@ function downloadBlueprint() {
     
     const link = document.createElement('a');
     link.href = url;
-    link.download = "ads_logic_blueprint.json";
+    link.download = "ads_network.json";
     
     document.body.appendChild(link);
     link.click();
@@ -278,7 +278,6 @@ function uploadBlueprint(event) {
             // Re-sync the system
             simulate();
             render();
-            alert("System Reconstituted Successfully.");
         } catch (err) {
             alert("CRITICAL ERROR: Failed to parse logic file.");
             console.error(err);
