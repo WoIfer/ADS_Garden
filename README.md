@@ -1,2 +1,2 @@
 # ADS_Garden
-aAsimple visual to test ADS logic rules.
+A simple visual tool to test and visualize ADS logic rules.
