@@ -93,6 +93,132 @@ function distToSegment(p, v, w) {
 
 canvas.oncontextmenu = (e) => e.preventDefault();
 
+let tooltipTimeout;
+let spectrumTooltipTimeout;
+
+function handleSpectrumMouseMove(e) {
+    clearTimeout(spectrumTooltipTimeout);
+    const vCanvas = document.getElementById('viz-canvas');
+    const rect = vCanvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    let tooltip = '';
+    const incoming = paths.filter(p => p.toId === lockedSpaceNode.id).map(p => nodes.find(n => n.id === p.fromId)?.val ?? -0.1).filter(v => v > -0.1);
+    const pad = 40; const w = vCanvas.width - pad * 2; const h = vCanvas.height - pad * 2;
+    
+    // Check for threshold line
+    if (lockedSpaceNode.type === 'THRESHOLD') {
+        let tx = pad + (lockedSpaceNode.thresh / 10) * w;
+        if (Math.abs(mx - tx) < 5 && my >= pad && my <= pad + h) {
+            tooltip = `Threshold: ${lockedSpaceNode.thresh.toFixed(1)}`;
+        }
+    }
+    
+    // Check for tolerance band
+    if (lockedSpaceNode.type === 'THRESHOLD' && !tooltip) {
+        let tx = pad + (lockedSpaceNode.thresh / 10) * w;
+        let rawTolW = (lockedSpaceNode.strict / 10) * w;
+        let bandStart = Math.max(pad, tx - rawTolW);
+        let bandEnd = Math.min(pad + w, tx + rawTolW);
+        if (mx >= bandStart && mx <= bandEnd && my >= pad && my <= pad + h) {
+            tooltip = `Tolerance Band: ±${lockedSpaceNode.strict.toFixed(1)}`;
+        }
+    }
+    
+    // Check for passing side
+    if (lockedSpaceNode.type === 'THRESHOLD' && !tooltip) {
+        let tx = pad + (lockedSpaceNode.thresh / 10) * w;
+        let rawTolW = (lockedSpaceNode.strict / 10) * w;
+        if (lockedSpaceNode.logic === 'GT') {
+            let passStart = Math.max(pad, tx - rawTolW);
+            if (mx >= passStart && mx <= pad + w && my >= pad && my <= pad + h) {
+                tooltip = `Passing Side: > ${(lockedSpaceNode.thresh - lockedSpaceNode.strict).toFixed(1)}`;
+            }
+        } else if (lockedSpaceNode.logic === 'LT') {
+            let passEnd = Math.min(pad + w, tx + rawTolW);
+            if (mx >= pad && mx <= passEnd && my >= pad && my <= pad + h) {
+                tooltip = `Passing Side: < ${(lockedSpaceNode.thresh + lockedSpaceNode.strict).toFixed(1)}`;
+            }
+        }
+    }
+    
+    // Check for incoming dots
+    incoming.forEach((val, i) => {
+        let x = pad + (val / 10) * w;
+        let y = pad + h/2 + (i % 2 === 0 ? -20 : 20);
+        if (Math.hypot(mx - x, my - y) < 10) {
+            tooltip = `Incoming Signal: ${val.toFixed(1)}`;
+        }
+    });
+    
+    // Check for output dot
+    let outX = pad + (Math.max(0, lockedSpaceNode.val) / 10) * w;
+    if (Math.hypot(mx - outX, my - (pad + h/2)) < 10) {
+        tooltip = `Output: ${lockedSpaceNode.val > -0.1 ? lockedSpaceNode.val.toFixed(1) : 'OFF'}`;
+    }
+    
+    if (tooltip) {
+        spectrumTooltipTimeout = setTimeout(() => {
+            const tooltipEl = document.getElementById('tooltip');
+            tooltipEl.innerText = tooltip;
+            tooltipEl.style.left = e.pageX + 10 + 'px';
+            tooltipEl.style.top = e.pageY + 10 + 'px';
+            tooltipEl.style.display = 'block';
+        }, 500);
+    } else {
+        document.getElementById('tooltip').style.display = 'none';
+    }
+}
+
+function handleSpectrumMouseLeave() {
+    clearTimeout(spectrumTooltipTimeout);
+    document.getElementById('tooltip').style.display = 'none';
+}
+
+canvas.addEventListener('mousemove', (e) => {
+    clearTimeout(tooltipTimeout);
+    const mx = e.offsetX, my = e.offsetY;
+    let tooltip = '';
+    const hoveredNode = nodes.find(n => Math.hypot(n.x - mx, n.y - my) < 20);
+    if (hoveredNode) {
+        let desc = '';
+        if (hoveredNode.type === 'INPUT') desc = 'Provides a fixed signal value.';
+        else if (hoveredNode.type === 'THRESHOLD') desc = 'Compares input to threshold and outputs based on logic.';
+        else if (hoveredNode.type === 'COMPETITIVE') desc = 'Combines multiple inputs using selected operation.';
+        else if (hoveredNode.type === 'OUTPUT') desc = 'Displays the final signal.';
+        tooltip = `${hoveredNode.type}: ${hoveredNode.val > -0.1 ? hoveredNode.val.toFixed(1) : 'OFF'}\n${desc}`;
+    } else {
+        const hoveredPath = paths.find(p => {
+            const nf = nodes.find(n => n.id === p.fromId);
+            const nt = nodes.find(n => n.id === p.toId);
+            if (nf && nt) {
+                return distToSegment({x: mx, y: my}, nf, nt) < 5;
+            }
+            return false;
+        });
+        if (hoveredPath) {
+            const nf = nodes.find(n => n.id === hoveredPath.fromId);
+            const nt = nodes.find(n => n.id === hoveredPath.toId);
+            tooltip = `Connection: ${nf?.type} -> ${nt?.type}\nSignal: ${nf?.val > -0.1 ? nf.val.toFixed(1) : 'OFF'}`;
+        }
+    }
+    if (tooltip) {
+        tooltipTimeout = setTimeout(() => {
+            const tooltipEl = document.getElementById('tooltip');
+            tooltipEl.innerHTML = tooltip.replace('\n', '<br>');
+            tooltipEl.style.left = e.pageX + 10 + 'px';
+            tooltipEl.style.top = e.pageY + 10 + 'px';
+            tooltipEl.style.display = 'block';
+        }, 500);
+    } else {
+        document.getElementById('tooltip').style.display = 'none';
+    }
+});
+
+canvas.addEventListener('mouseleave', () => {
+    clearTimeout(tooltipTimeout);
+    document.getElementById('tooltip').style.display = 'none';
+});
+
 function showInspector(node) {
     activeNode = node;
     document.getElementById('inspector').style.display = 'block';
@@ -134,9 +260,19 @@ function openSpectrum() {
     lockedSpaceNode = activeNode;
     document.getElementById('spectrum-overlay').style.display = 'flex';
     updateSpectrum();
+    const vCanvas = document.getElementById('viz-canvas');
+    vCanvas.addEventListener('mousemove', handleSpectrumMouseMove);
+    vCanvas.addEventListener('mouseleave', handleSpectrumMouseLeave);
 }
 
-function closeSpectrum() { lockedSpaceNode = null; document.getElementById('spectrum-overlay').style.display = 'none'; render(); }
+function closeSpectrum() { 
+    lockedSpaceNode = null; 
+    document.getElementById('spectrum-overlay').style.display = 'none'; 
+    render(); 
+    const vCanvas = document.getElementById('viz-canvas');
+    vCanvas.removeEventListener('mousemove', handleSpectrumMouseMove);
+    vCanvas.removeEventListener('mouseleave', handleSpectrumMouseLeave);
+}
 function closeInspector() { activeNode = null; document.getElementById('inspector').style.display = 'none'; render(); }
 
 function updateSpectrum() {
@@ -151,8 +287,21 @@ function updateSpectrum() {
     document.getElementById('dim-header').innerText = `LOCKED: ${lockedSpaceNode.type} (STRICTNESS: ${lockedSpaceNode.strict})`;
     const pad = 40; const w = vCanvas.width - pad * 2; const h = vCanvas.height - pad * 2;
     vCtx.strokeStyle = '#222'; vCtx.strokeRect(pad, pad, w, h);
-    
-if (lockedSpaceNode.type === 'THRESHOLD') {
+        // Draw number line
+    vCtx.strokeStyle = '#666';
+    vCtx.lineWidth = 1;
+    vCtx.fillStyle = '#666';
+    vCtx.font = '10px monospace';
+    vCtx.textAlign = 'center';
+    for (let i = 0; i <= 10; i += 2.5) {
+        let x = pad + (i / 10) * w;
+        vCtx.beginPath();
+        vCtx.moveTo(x, pad + h);
+        vCtx.lineTo(x, pad + h + 5);
+        vCtx.stroke();
+        vCtx.fillText(i.toString(), x, pad + h + 15);
+    }
+    if (lockedSpaceNode.type === 'THRESHOLD') {
     vCtx.strokeStyle = mainCol; vCtx.setLineDash([5, 5]);
     let tx = pad + (lockedSpaceNode.thresh / 10) * w;
     vCtx.beginPath(); vCtx.moveTo(tx, pad); vCtx.lineTo(tx, pad + h); vCtx.stroke();
@@ -180,9 +329,11 @@ if (lockedSpaceNode.type === 'THRESHOLD') {
 }
     
     vCtx.fillStyle = '#444';// hi again inline completion :) nice i like it r: Hello again! Thank you! Here's the continuation of the code:
+    const dotColors = ['#444', '#666', '#888', '#aaa'];
     incoming.forEach((val, i) => {
         let x = pad + (val / 10) * w;
         let y = pad + h/2 + (i % 2 === 0 ? -20 : 20);
+        vCtx.fillStyle = dotColors[i % dotColors.length];
         vCtx.beginPath(); vCtx.arc(x, y, 4, 0, Math.PI*2); vCtx.fill();
     });
     let outX = pad + (Math.max(0, lockedSpaceNode.val) / 10) * w;
@@ -203,7 +354,7 @@ function simulate() {
             
             const tol = n.strict || 0;
             if (n.type === 'THRESHOLD') {
-                const sig = Math.max(...incoming);
+                const sig = incoming.length > 0 ? incoming[0] : -0.1;
                 let pass = false;
                 if (n.logic === 'GT') pass = sig > (n.thresh - tol);
                 if (n.logic === 'LT') pass = sig < (n.thresh + tol);
