@@ -47,7 +47,6 @@ function dropNode(ev) {
 canvas.addEventListener('mousedown', (e) => {
     const mx = e.offsetX; const my = e.offsetY;
     const clickedNode = nodes.find(n => Math.hypot(n.x - mx, n.y - my) < 20);
-
     if (e.button === 2) {
         if (clickedNode) {
             const deletedId = clickedNode.id;
@@ -68,6 +67,7 @@ canvas.addEventListener('mousedown', (e) => {
 
     if (clickedNode) {
         showInspector(clickedNode);
+        if(e.shiftKey){
         if (!connectionSource) connectionSource = clickedNode;
         else {
             if (connectionSource.id !== clickedNode.id && !paths.find(p => p.fromId === connectionSource.id && p.toId === clickedNode.id)) {
@@ -75,6 +75,7 @@ canvas.addEventListener('mousedown', (e) => {
                 simulate();
             }
             connectionSource = null;
+        }
         }
     } else {
         closeInspector();
