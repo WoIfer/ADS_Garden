@@ -39,7 +39,7 @@ function dropNode(ev) {
         id: Date.now(), x, y, 
         type: ev.dataTransfer.getData("type"), 
         val: -0.1, // OFF by default
-        thresh: 5.0, logic: 'GT', op: 'AVG', 
+        thresh: 5.0, logic: 'NOT', op: 'SUM', 
         strict: 0 
     });
     render();
@@ -71,10 +71,8 @@ canvas.addEventListener('mousedown', (e) => {
         if(e.shiftKey){
         if (!connectionSource) connectionSource = clickedNode;
         else {
-            if (connectionSource.id !== clickedNode.id && !paths.find(p => p.fromId === connectionSource.id && p.toId === clickedNode.id)) {
-                paths.push({ fromId: connectionSource.id, toId: clickedNode.id });
-                simulate();
-            }
+            paths.push({ fromId: connectionSource.id, toId: clickedNode.id });
+            simulate();
             connectionSource = null;
         }
         }
@@ -215,6 +213,7 @@ function simulate() {
                 if (n.op === 'MAX') n.val = Math.max(...incoming);
                 if (n.op === 'MIN') n.val = Math.min(...incoming);
                 if (n.op === 'AVG') n.val = incoming.reduce((a, b) => a + b, 0) / incoming.length;
+                if (n.op === 'SUM') n.val = incoming.reduce((a, b) => a + b, 0);
             } else { n.val = incoming.length > 0 ? Math.max(...incoming) : -0.1; }
         });
     }
@@ -309,16 +308,51 @@ function resetData() { nodes.forEach(n => { if(n.type !== 'INPUT') n.val = -0.1;
 function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const mainCol = getComputedStyle(document.documentElement).getPropertyValue('--main-color');
+    
+    // Group paths for multiple connections
+    let pathGroups = {};
     paths.forEach(p => {
-        const nf = nodes.find(n => n.id === p.fromId);
-        const nt = nodes.find(n => n.id === p.toId);
-        if (nf && nt) {
-            ctx.beginPath(); ctx.moveTo(nf.x, nf.y); ctx.lineTo(nt.x, nt.y);
-            // ACTIVE if value is 0 or higher
-            ctx.strokeStyle = nf.val > -0.1 ? mainCol : '#222';
-            ctx.lineWidth = 2; ctx.stroke();
-        }
+        let key = p.fromId < p.toId ? `${p.fromId}-${p.toId}` : `${p.toId}-${p.fromId}`;
+        if (!pathGroups[key]) pathGroups[key] = [];
+        pathGroups[key].push(p);
     });
+    
+    // Draw paths with offsets for multiples and loops for self
+    Object.values(pathGroups).forEach(group => {
+        group.forEach((p, index) => {
+            const nf = nodes.find(n => n.id === p.fromId);
+            const nt = nodes.find(n => n.id === p.toId);
+            if (nf && nt) {
+                if (nf.id === nt.id) {
+                    // Self-loop: draw arc
+                    ctx.beginPath();
+                    ctx.arc(nf.x, nf.y - (15 + index * 5), 15 + index * 5, 0, Math.PI);
+                    ctx.strokeStyle = nf.val > -0.1 ? mainCol : '#222';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                } else {
+                    // Connection: draw line with offset for multiples
+                    let dx = nt.x - nf.x;
+                    let dy = nt.y - nf.y;
+                    let len = Math.hypot(dx, dy);
+                    let offset = (index - (group.length - 1) / 2) * 8;
+                    if (len > 0) {
+                        let ux = dx / len;
+                        let uy = dy / len;
+                        let px = -uy * offset;
+                        let py = ux * offset;
+                        ctx.beginPath();
+                        ctx.moveTo(nf.x + px, nf.y + py);
+                        ctx.lineTo(nt.x + px, nt.y + py);
+                        ctx.strokeStyle = nf.val > -0.1 ? mainCol : '#222';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    }
+                }
+            }
+        });
+    });
+    
     nodes.forEach(n => {
         ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(n.x, n.y, 18, 0, Math.PI*2); ctx.fill();
         const isActive = n.val > -0.1;
