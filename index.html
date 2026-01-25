@@ -46,7 +46,7 @@
     <input type="file" id="fileInput" style="display:none" onchange="uploadBlueprint(event)">
     <button onclick="document.getElementById('fileInput').click()">UPLOAD BLUEPRINT</button>
     <button onclick="resetData()">RESET DATA</button>
-    <button onclick="wipeAll()" id="wipebutton">WIPE WORKSPACE</button>
+    <button onclick="wipeAll()" class="altbutton">WIPE WORKSPACE</button>
     
     <div class="disclaimer">
         <b>System Status:</b><br>
@@ -104,8 +104,8 @@
             <label>Background Color:</label>
             <input type="color" id="ins-bgcolor" oninput="updateIns()">
         </div>
-        <button id="spec-btn" onclick="openSpectrum()" style="background:var(--bg-color);color: var(--main-color);">DATA SAMPLE SPACE</button>
-        <button onclick="closeInspector()" style="color:var(--accent-color); border-color:var(--accent-color)">HIDE CONFIG</button>
+        <button  onclick="openSpectrum()" >DATA SAMPLE SPACE</button>
+        <button class = "altbutton"onclick="closeInspector()" >HIDE CONFIG</button>
     </div>
 </div>
 

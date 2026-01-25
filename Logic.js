@@ -19,6 +19,7 @@ function updateTheme() {
     const [main, accent] = document.getElementById('theme-sel').value.split('|');
     document.documentElement.style.setProperty('--main-color', main);
     document.documentElement.style.setProperty('--accent-color', accent);
+    updateSpectrum();
     render();
 }
 
@@ -42,7 +43,7 @@ function dropNode(ev) {
         id: Date.now(), x, y, 
         type: ev.dataTransfer.getData("type"), 
         val: 0, // OFF by default
-        thresh: 5.0, logic: 'NOT', op: 'SUM', 
+        thresh: 0, logic: 'None', op: 'None', 
         strict: 0, score: 0, bgColor: '#000'
     });
     render();
@@ -332,6 +333,7 @@ function updateSpectrum() {
     vCtx.clearRect(0, 0, vCanvas.width, vCanvas.height);
     const incoming = paths.filter(p => p.toId === lockedSpaceNode.id).map(p => nodes.find(n => n.id === p.fromId)?.val ?? 0).filter(v => v >= 0);
     const mainCol = getComputedStyle(document.documentElement).getPropertyValue('--main-color');
+    const accentCol = getComputedStyle(document.documentElement).getPropertyValue('--accent-color');
     
     document.getElementById('dim-header').innerText = `LOCKED: ${lockedSpaceNode.type} (STRICTNESS: ${lockedSpaceNode.strict})`;
     const pad = 40; const w = vCanvas.width - pad * 2; const h = vCanvas.height - pad * 2;
@@ -386,7 +388,7 @@ function updateSpectrum() {
         vCtx.beginPath(); vCtx.arc(x, y, 4, 0, Math.PI*2); vCtx.fill();
     });
     let outX = pad + (Math.max(0, lockedSpaceNode.val) / 10) * w;
-    vCtx.shadowBlur = 15; vCtx.shadowColor = mainCol; vCtx.fillStyle = (lockedSpaceNode.val > 0) ? mainCol : '#222';
+    vCtx.shadowBlur = 15; vCtx.shadowColor = accentCol; vCtx.fillStyle = (lockedSpaceNode.val > 0) ? accentCol : '#222'; vCtx.shadowColor = (lockedSpaceNode.val > 0) ? accentCol : '#222';
     vCtx.beginPath(); vCtx.arc(outX, pad + h/2, 8, 0, Math.PI*2); vCtx.fill(); vCtx.shadowBlur = 0;
 }
 
@@ -433,7 +435,6 @@ function saveNetwork() {
             paths: paths.map(p => ({ fromId: p.fromId, toId: p.toId }))
         };
         localStorage.setItem('ads_logic_save', JSON.stringify(snapshot)); 
-        alert("Memory Locked.");
     } catch(e) {
         console.error(e);
         alert("Save failed. Check console.");
